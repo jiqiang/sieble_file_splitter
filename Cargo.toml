@@ -1,0 +1,7 @@
+[package]
+name = "sieble_spliter"
+version = "0.1.0"
+authors = ["Glenn Ji <glenn.ji@nab.com.au>"]
+edition = "2018"
+
+[dependencies]
