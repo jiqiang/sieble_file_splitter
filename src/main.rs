@@ -20,8 +20,8 @@ fn split() -> std::io::Result<()> {
 
     let f = File::open(SOURCE_CSV)?;
     let mut reader = BufReader::new(f);
-    let mut line = String::new();
-    let mut submissions: Vec<Vec<String>> = Vec::new();
+    let mut line = String::with_capacity(100);
+    let mut submissions: Vec<Vec<String>> = Vec::with_capacity(200);
     let mut old_group_id = String::from("");
     let mut first_run = true;
     let mut count = 0;
