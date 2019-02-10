@@ -3,7 +3,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 
-const SOURCE_CSV: &str = "/Users/p772733/Downloads/sieble.tiny.CSV";
+const SOURCE_CSV: &str = "/Users/jiqiang/Development/sieble_file_splitter/sieble.tiny.CSV";
 
 fn main() {
     match split() {

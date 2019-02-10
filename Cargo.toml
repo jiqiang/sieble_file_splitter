@@ -5,3 +5,4 @@ authors = ["Glenn Ji <glenn.ji@nab.com.au>"]
 edition = "2018"
 
 [dependencies]
+threadpool = "1.7.1"
