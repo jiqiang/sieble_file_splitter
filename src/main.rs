@@ -2,8 +2,9 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
+use std::sync::mpsc::channel;
 
-const SOURCE_CSV: &str = "/Users/jiqiang/Development/sieble_file_splitter/sieble.tiny.CSV";
+const SOURCE_CSV: &str = "/Users/jiqiang/Development/sieble_file_splitter/data/sieble.tiny.CSV";
 
 fn main() {
     match split() {
@@ -23,13 +24,22 @@ fn split() -> std::io::Result<()> {
     let mut submissions: Vec<Vec<String>> = Vec::new();
     let mut old_group_id = String::from("");
     let mut first_run = true;
+    let mut count = 0;
+    let pool = threadpool::Builder::new().build();
+    let (tx, rx) = channel();
     loop {
         let len = reader.read_line(&mut line)?;
 
         // EOF
         if len == 0 {
             // do something with sumissions of same group
-            println!("{:?}", submissions.len());
+            count += 1;
+            let tx = tx.clone();
+            let num_submissions = submissions.len();
+            pool.execute(move || {
+                tx.send(num_submissions)
+                    .expect("channel will be there waiting for the pool");
+            });
             break;
         }
 
@@ -59,7 +69,13 @@ fn split() -> std::io::Result<()> {
                 first_run = false;
             } else {
                 // do something with sumissions of same group
-                println!("{:?}", submissions.len());
+                count += 1;
+                let tx = tx.clone();
+                let num_submissions = submissions.len();
+                pool.execute(move || {
+                    tx.send(num_submissions)
+                        .expect("channel will be there waiting for the pool");
+                });
 
                 line.clear();
                 submissions.clear();
@@ -72,7 +88,8 @@ fn split() -> std::io::Result<()> {
 
         line.clear();
     }
-
+    //pool.join();
+    println!("{:?}", rx.iter().take(count).collect::<Vec<usize>>());
     Ok(())
 }
 
