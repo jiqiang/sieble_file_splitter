@@ -2,15 +2,15 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
-use std::sync::mpsc::channel;
+use std::time::Instant;
 
-const SOURCE_CSV: &str = "/Users/jiqiang/Development/sieble_file_splitter/data/sieble.tiny.CSV";
+const SOURCE_CSV: &str = "/Users/p772733/Downloads/sieble.CSV";
+const DESTINATION_DIR: &str = "/Users/p772733/Downloads/sieble";
 
 fn main() {
-    match split() {
-        Err(e) => println!("Error: {}", e),
-        _ => println!("Done"),
-    };
+    let now = Instant::now();
+    split().unwrap();
+    println!("{}", now.elapsed().as_secs());
 }
 
 fn split() -> std::io::Result<()> {
@@ -24,21 +24,17 @@ fn split() -> std::io::Result<()> {
     let mut submissions: Vec<Vec<String>> = Vec::with_capacity(200);
     let mut old_group_id = String::from("");
     let mut first_run = true;
-    let mut count = 0;
-    let pool = threadpool::Builder::new().build();
-    let (tx, rx) = channel();
+    let pool = threadpool::ThreadPool::new(8);
     loop {
         let len = reader.read_line(&mut line)?;
 
         // EOF
         if len == 0 {
             // do something with sumissions of same group
-            count += 1;
-            let tx = tx.clone();
-            let num_submissions = submissions.len();
+            let job = submissions.clone();
             pool.execute(move || {
-                tx.send(num_submissions)
-                    .expect("channel will be there waiting for the pool");
+                let json = create_json(&job);
+                create_file(old_group_id.as_str(), &json).unwrap();
             });
             break;
         }
@@ -63,36 +59,46 @@ fn split() -> std::io::Result<()> {
 
         // group submissions by same group id
         if old_group_id.ne(&fields[6]) {
-            old_group_id = fields[6].clone();
-
             if first_run {
                 first_run = false;
             } else {
                 // do something with sumissions of same group
-                count += 1;
-                let tx = tx.clone();
-                let num_submissions = submissions.len();
+                let job = submissions.clone();
                 pool.execute(move || {
-                    tx.send(num_submissions)
-                        .expect("channel will be there waiting for the pool");
+                    let json = create_json(&job);
+                    create_file(old_group_id.as_str(), &json).unwrap();
                 });
-
+                old_group_id = fields[6].clone();
                 line.clear();
                 submissions.clear();
                 submissions.push(fields);
                 continue;
             }
+            old_group_id = fields[6].clone();
         }
 
         submissions.push(fields);
 
         line.clear();
     }
-    //pool.join();
-    println!("{:?}", rx.iter().take(count).collect::<Vec<usize>>());
+    pool.join();
     Ok(())
 }
 
 fn file_exists(file_path: &str) -> bool {
     Path::new(file_path).exists()
+}
+
+fn create_file(filename: &str, content: &str) -> std::io::Result<()> {
+    let mut path = String::from(DESTINATION_DIR);
+    path.push_str("/");
+    path.push_str(filename);
+    path.push_str(".json");
+    let mut buffer = File::create(path.as_str())?;
+    buffer.write_all(content.as_bytes())?;
+    Ok(())
+}
+
+fn create_json(data: &[Vec<String>]) -> String {
+    format!("{:#?}", data)
 }
